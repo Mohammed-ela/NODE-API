@@ -9,7 +9,7 @@
 5. [Important](###Important)
 
 ### Description
-- API ingredie, on enregistre une liste d'ingredient propre a chaque utilisateur pour faire un appel d'API pour généré des recettes
+- API ingredient, on enregistre une liste d'ingredients propre à chaque utilisateur pour faire un appel d'API pour généré des recettes.
 
 ### Technologies
 
