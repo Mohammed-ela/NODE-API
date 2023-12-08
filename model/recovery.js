@@ -9,6 +9,11 @@ const recoveryPasswordSchema = new mongoose.Schema({
         ref: 'User', 
         required: true 
     },
+    expireAt: { 
+        type: Date, 
+        default: Date.now, 
+        expires: 3600 // 1h
+    }
 });
 
 const RecoveryPassword = mongoose.model('RecoveryPassword', recoveryPasswordSchema);

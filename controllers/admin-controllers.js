@@ -199,39 +199,46 @@ module.exports = {
         try {
             const { slug } = req.params;
             const { newPassword } = req.body;
-
+    
             // Rechercher le slug dans la collection recoveryPassword
             const recoveryEntry = await RecoveryPassword.findOne({ slug });
-
+    
             if (!recoveryEntry) {
                 return res.status(404).json({ message: 'La demande de modification de mot de passe est expirée ou invalide.' });
             }
-
-            // on verifie appartient bien a lobjet du modele recovery si le slug correpondent bien
+    
+            // Vérifier l'expiration du slug
+            if (recoveryEntry.expireAt && recoveryEntry.expireAt < new Date()) {
+                // Le slug est expiré
+                return res.status(404).json({ message: 'La demande de modification de mot de passe a expiré.' });
+            }
+    
+            // on verifie appartient bien à l'objet du modèle recovery si le slug correspond bien
             if (!(recoveryEntry instanceof RecoveryPassword)) {
                 return res.status(500).json({ message: 'Erreur lors de la mise à jour du mot de passe.' });
             }
-
-            // on cherche user en fonction du slug
+    
+            // on cherche l'utilisateur en fonction du slug
             const user = await User.findById(recoveryEntry.userId);
-
+    
             if (!user) {
                 return res.status(404).json({ message: 'Utilisateur introuvable.' });
             }
-
+    
             // MAJ du MDP
             user.setPassword(newPassword);
             await user.save();
-
+    
             // On supprime le slug qu'on a utilisé
             await RecoveryPassword.deleteMany({ slug: recoveryEntry.slug });
-
+    
             res.status(200).json({ message: 'Mot de passe mis à jour avec succès.' });
         } catch (error) {
             console.error(new Date().toISOString(), 'controllers/admin-controllers.js > newPasswordResponse > error ', error);
             return res.status(500).json({ message: 'Erreur lors de la mise à jour du mot de passe.', error });
         }
     },
+    
 
     //----------------------------------------------------------- INGREDIENTS ------------------------------------------------------------  
     
@@ -254,9 +261,129 @@ module.exports = {
         } catch (error) {
             return res.status(401).json({ message: 'Token invalide', 'voici lerreur': error });
         }
-    }
+    },
     
 
+    //------------------------------------------- ADD BY ID USER
+    AddIngredient: async (req, res) => {
+        try {
+            const { userId } = decoded; 
+            const { ingredient } = req.body;
+    
+    
+            // Vérifier si l'ingrédient existe déjà dans le tableau
+            const user = await User.findById(userId); 
+
+            if (!user) {
+                return res.status(404).json({ message: 'Utilisateur introuvable' });
+            }
+    
+            if (user.ingredients.includes(ingredient)) {
+                return res.status(400).json({ message: 'Cet ingrédient existe déjà dans votre liste', 
+                                                ingredients: `${user.ingredients}` 
+            });
+            }
+
+            user.ingredients.push(ingredient);
+            await user.save();
+    
+            res.status(200).json({ message: 'Ingrédient ajouté avec succès',
+                                    ingredients: `${user.ingredients}` 
+        
+        
+        });
+        } catch (error) {
+            console.error(new Date().toISOString(), 'controllers/admin-controllers.js > AddIngredient > error ', error);
+            return res.status(500).json({ message: 'Erreur lors de l\'ajout de l\'ingrédient', error });
+        }
+    },
+    
+  
+    //------------------------------------------- LISTE BY ID USER
+    GetIngredient: async (req, res) => {
+        try {
+            const { userId } = decoded;
+            const user = await User.findById(userId);
+    
+            if (!user) {
+                return res.status(404).json({ message: 'Utilisateur introuvable' });
+            }
+
+                        // si tableau deja vide ?
+            if (user.ingredients.length === 0) {
+                return res.status(400).json({ message: 'Votre tableau d\'ingrédients est vide' });
+            }
+
+            res.status(200).json({ ingredients: `voici la liste de vos ingrédients : ${user.ingredients}` 
+        });
+
+        } catch (error) {
+            console.error(new Date().toISOString(), 'controllers/admin-controllers.js > GetIngredient > error ', error);
+            return res.status(500).json({ message: 'Erreur lors de la récupération des ingrédients', error });
+        }
+    },
+    
+
+    // DELETE BY ID USER
+    DeleteIngredientbyid: async (req, res) => {
+        try {
+            const { userId } = decoded;
+            const ingredientName = req.params.index; 
+
+            // Trouver l'utilisateur
+            const user = await User.findById(userId);
+
+            if (!user) {
+                return res.status(404).json({ message: 'Utilisateur introuvable' });
+            }
+
+            // Vérifier si l'ingrédient existe dans le tableau
+            const ingredientIndex = user.ingredients.indexOf(ingredientName);
+            if (ingredientIndex === -1) {
+                return res.status(400).json({ message: 'Ingrédient introuvable dans la liste' });
+            }
+
+            // Supprimer l'ingrédient de l'array
+            user.ingredients.splice(ingredientIndex, 1);
+            await user.save();
+            res.status(200).json({ message: `L'ingrédient ${ingredientName} a été supprimé avec succès`,
+                                    ingredients: `${user.ingredients}` 
+        });
+        } catch (error) {
+            console.error(new Date().toISOString(), 'controllers/admin-controllers.js > DeleteIngredientbyid > error ', error);
+            return res.status(500).json({ message: `Erreur lors de la suppression de l'ingrédient "${ingredientName}"`, error });
+        }
+    },
+
+
+    //------------------------------------------- DELETE ALL
+    DeleteAllIngredient  : async (req,res) => {
+        
+        try {
+            const { userId } = decoded; 
+        
+            // Trouver et mettre à jour l'utilisateur
+            const user = await User.findByIdAndUpdate(userId, { $set: { ingredients: [] } }, { new: true });
+
+            // si user introuvanble
+            if (!user) {
+            return res.status(404).json({ message: 'Utilisateur introuvable' });
+            }
+
+            // si tableau deja vide ?
+            if (user.ingredients.length === 0) {
+                return res.status(200).json({ message: 'Votre tableau d\'ingrédients est déjà vide' });
+            }
+            res.status(200).json({ message: 'Tous les ingrédients ont été supprimés avec succès',
+                                    ingredients: `${user.ingredients}`  
+        
+        });
+        } catch (error) {
+            console.error(new Date().toISOString(), 'controllers/admin-controllers.js > DeleteAllIngredient > error ', error);
+            return res.status(500).json({ message: 'Erreur lors de la suppression de tous les ingrédients', error });
+        }
+    
+    },
 
 
 };
