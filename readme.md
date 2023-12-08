@@ -56,6 +56,8 @@ L'API Ingredient offre un moyen simple et sécurisé pour les utilisateurs de g�
 ## Exemples d'API
 
 - **Inscription :**
+
+
   --http
   POST /signup/
   Content-Type: application/json
